@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="board">
+
+	
+	<!-- [검색X] 게시글 전체 갯수 가져오기 -->
+	<select id="countAll" resultType="int">
+		select count(*) from board
+	</select>
+
+	<!-- 한페이지에 게시글 목록 가져오기 (start, end) -->
+	<select id="getArticles" parameterType="hashmap" resultType="boardDTO">
+		
+		<!-- xml파일에선 "<"를 태그로 인지하여 내가 원하는 "연산"으로 설정하기 위해 'CDATA'를 사용해야 한다. -->
+		<![CDATA[
+			select B.*, r from
+				(select A.*, rownum r from
+					(select * from board order by ref desc, re_step asc) A
+				order by ref desc, re_step asc) B
+			where r >= #{start} and r <= #{end}
+		]]>
+	</select>
+
+	<!-- [검색O] 검색한 글 전체 수 가져오기 -->
+	<select id="countSearch" parameterType="hashmap" resultType="int">
+		select count(*) from board where ${sel} like '%'||#{search}||'%'
+	</select>
+
+	<!-- [검색O] 검색한 게시글의 목록 가져오기 -->
+	<select id="getSearchArticles" parameterType="hashmap" resultType="boardDTO">
+	
+		<!-- xml파일에선 "<"를 태그로 인지하여 내가 원하는 "연산"으로 설정하기 위해 'CDATA'를 사용해야 한다. -->
+		<![CDATA[
+			select B.*, r from
+				(select A.*, rownum r from
+					(select * from board where ${sel} like '%'||#{search}||'%' 
+					order by ref desc, re_step asc) A
+				order by ref desc, re_step asc) B
+			where r >= #{start} and r <= #{end}
+		]]>
+	</select>
+
+
+
+
+
+</mapper>

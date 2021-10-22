@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/context
+	http://www.springframework.org/schema/context/spring-context-4.3.xsd"
+	>	
+	
+	<!-- 이곳에 설정할 것들 : dataSource(DB), DAO, service ... -->
+	<!--  
+		* Mybatis 활용한 DB 설정 *
+			DB 데이터 소스 
+				DB 커넥션 정보 BasicDataSource 타입 
+				destroy-method : bean 객체의 Scope가 끝났을 경우, close() 메서드를 호출하겠다~
+	-->
+	<bean id="dataSourceSpied" class="org.apache.commons.dbcp.BasicDataSource" 
+		destroy-method="close"
+		p:driverClassName="oracle.jdbc.driver.OracleDriver"
+		p:url="jdbc:oracle:thin:@nullmaster.iptime.org:1521:ORCL"
+		p:username="glob19"
+		p:password="glob19"
+	/>
+	<bean id="dataSource" class="net.sf.log4jdbc.Log4jdbcProxyDataSource">
+		<constructor-arg ref="dataSourceSpied"/>
+		<property name="logFormatter">
+			<bean class="net.sf.log4jdbc.tools.Log4JdbcCustomFormatter">
+				<property name="loggingType" value="MULTI_LINE" />
+				<property name="sqlPrefix" value="SQL : " />
+			</bean>
+		</property>
+	</bean>
+	<!--  
+		위 문법을 java로 바꾸면 아래와 비슷한 느낌이다. 
+		Log4jdbcProxyDataSource dataSource = new Log4jdbcProxyDataSource(dataSourceSpied);
+		dataSource.setLogFormatter(new Log4JdbcCustomFormatter().setLoggingType("MULTI_LINE").setSqlPreFix("SQL : "));
+	-->
+	
+	
+	
+	<!-- 
+		* Connection-pool 역할 : SqlSessionFactory 
+			필요한것 : DB 연결정보, 매퍼위치와 type alias에 대한 정보 (마이바티스 설정정보 : mybatis-config.xml)
+			-> mybatis에서 Connection-pool, 커넥션 생성 
+	-->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+	 	<property name="configLocation" value="/WEB-INF/mybatis/mybatis-config.xml" />
+	</bean>
+	 <!-- 
+	 	위 문법을 java로 바꾸면 아래와 같이 된다.
+	 	SqlSessionFactoryBean sqlSessionFactory = new SqlSessionFactoryBean();
+	 	sqlSessionFactory.setDataSource(dataSource);
+	 	sqlSessionFactory.setConfigLacation(/WEB-INF/mybatis/mybatis-config.xml);
+	 -->
+	 
+	 
+	<!-- 
+		* sqlSession : sql 실행하기 위해 필요한 커넥션 같은것.
+			destroy-method="clearCache" : mybatis의 장점 중 하나인 캐시(최초접속시 사용자 정보 저장해놓고 다음접속시 빠르게 처리)지우겠다는 명령 
+	-->
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate" destroy-method="clearCache">
+		<constructor-arg name="sqlSessionFactory" ref="sqlSessionFactory" />
+	</bean>
+	<!-- 
+		위 문법을 java로 바꾸면 아래와 같이 된다.
+		SqlSessionTemplate sqlSession = new SqlSession(sqlSessionFactory); 
+	-->
+	
+	
+	
+	<!-- 설정#1. bean 으로 등록해서 객체 생성 -->
+	<!-- MemberDAOImpl <bean> 으로 등록 == Spring을 통해 객체생성 -->
+	
+	<!--  
+	vers.1
+	<bean id="memberDAO" class="spring.member.dao.MemberDAOImpl">
+		<property name="sqlSession" ref="sqlSession" />
+	</bean>
+	-->
+	<!-- 
+		위 문법을 java로 바꾸면 아래와 같이 된다.
+		MemberDAOImpl memberDAO = new MemberDAO();
+		memberDAO.setSqlSession(sqlSession);
+		
+		
+		비지니스로직 처리하는 곳에서
+		memberDAO.insertMember(dto);
+	-->
+	
+	<!-- 
+		vers.2
+		Aurowired 방식 
+	<bean id="memberDAO" class="spring.member.dao.MemberDAOImpl" />
+	-->
+	
+	<!-- 설정#2. component-scan + @Repository MemberDAOImpl -->
+	<context:component-scan base-package="spring.member.dao"/>
+	<!-- MemberService bean으로 등록 -->
+	<context:component-scan base-package="spring.member.service"/>
+	
+	<!-- BoardService bean으로 등록 -->
+	<context:component-scan base-package="spring.board.service"/>
+	<context:component-scan base-package="spring.board.dao"/>
+	
+
+</beans>
